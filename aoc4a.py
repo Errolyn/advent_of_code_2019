@@ -24,7 +24,7 @@ for number in range(start, end):
     is_valid_password = check_for_rules(number)
     
     if is_valid_password == 2:
-        print(f"Appended {number}")
+        # print(f"Appended {number}")
         valid_passwords.append(number)
 
 print(len(valid_passwords))
