@@ -1,62 +1,114 @@
+from dataclasses import dataclass, field
+from typing import List
+
 class Computer:
-    def __init__(self, instruction, position = 0):
-        options = {
-            1 : self.add,
-            2 : self.multiply,
-            3 : self.get_input,
-            4 : self.return_value,
-            99: self.end_program
-        }
-        opcode = None
-        arg1 = None
-        arg2 = None
-
-        self.instruction = instruction
+    def __init__(self, instruction_set, inputs=[], position = 0, input_position = 0):
+        self.instruction_set = instruction_set
         self.position = position
-        self.options = options
-        self.opcode = opcode
-        self.arg1 = arg1
-        self.arg2 = arg2
+        self.inputs = inputs
+        self.input_position = input_position
+        self.output = []
+        self.stopped = False
 
-    # def get_optcode(self, instruction):
+    def process_all(self):
+        while not self.stopped:
+            self.process_one()
 
+    def process_one(self):
+        instruction = self.get_instruction()
+        addr_values = self.evaluate_arg(instruction.args)
+        if instruction.key_word == "add":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            self.instruction_set[instruction.output] = addr_a + addr_b
+            self.position += 4
+        elif instruction.key_word == "multiply":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            self.instruction_set[instruction.output] = addr_a * addr_b
+            self.position += 4
+        elif instruction.key_word == "input":
+            while True:
+                try:
+                    next_input = self.inputs[self.input_position]
+                    print("requested input got:", next_input)
+                    break
+                except ValueError:
+                    print("Must be a number")
+            self.instruction_set[instruction.output] = next_input
+            self.input_position += 1
+            self.position += 2
+        elif instruction.key_word == "output":
+            addr_a = addr_values[0]
+            self.output.append(addr_a)
+            self.position += 2
+        elif instruction.key_word == "STOP":
+            self.stopped = True
+            if not self.output:
+                self.output.append(self.instruction_set[0])
+        else:
+            raise Exception(f"Instruction not implemented {instruction.key_word}") 
 
+    def evaluate_arg(self, args):
+        addrs = []
+        for arg in args:
+            if arg.mode == "value":
+                addrs.append(arg.value)
+            elif arg.mode == "address":
+                addrs.append(self.instruction_set[arg.value])
+            else:
+                raise Exception(f"Mode not implemented {arg.mode}") 
+        return addrs
 
-    def run_opcode(self, opcode):
-        try:
-            funct = self.options[opcode]
-            return funct
-        except KeyError:
-            print(f"Invaid opcode: {opcode}")
-        
+    def get_instruction(self):
+        full_instruction = self.instruction_set[self.position]
+        code = full_instruction % 100
+        mode_names = ["address", "value"]
+        modes = [
+            full_instruction // 100 % 10, 
+            full_instruction // 1000 % 10
+        ]
 
-    ## Instructions ##
+        if code == 1:
+            key_word = "add"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            output = self.instruction_set[self.position+3]
+            return Instruction(key_word, args, output)
+        elif code == 2:
+            key_word = "multiply"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            output = self.instruction_set[self.position+3]
+            return Instruction(key_word, args, output)
+        elif code == 3:
+            return Instruction(
+                key_word = "input",
+                output = self.instruction_set[self.position+1]
+            )
+        elif code == 4:
+            return Instruction(
+                key_word = "output",
+                args = [Arg(mode_names[modes[0]], self.instruction_set[self.position+1])]
+            )
+        elif code == 99:
+            return Instruction(key_word = "STOP")
 
-    ## Command code 1: ##
-    # Two behaviors default will use next two ints in instruction,
-    # specific ints can be passed to function
-    def add(self, x = None, y = None):  
-        if x == None:
-            x = self.instruction[self.position + 1]
-        if y == None:
-            y = self.instruction[self.position + 2]
-        self.position += 3
-        return x + y
+        else:
+            raise Exception(f"Instruction not implemented {code}") 
 
-    def multiply(self, x, y): #command code 2
-        return x * y
+@dataclass
+class Arg:
+    mode: str
+    value: int
 
-    def get_input(self, *args): #command code 3
-        while True:
-            try:
-                user_input = int(input("Input a number \n>>> "))
-                return user_input
-            except:
-                print("Must be a number")
+@dataclass
+class Instruction:
+    key_word: str
+    args: List[Arg] = field(default_factory=list)
+    output: int = None
 
-    def return_value(self, input_value, *args): #command code 4
-        return input_value
-
-
-    def end_program(self): #command code 99
-        return "Exit"
