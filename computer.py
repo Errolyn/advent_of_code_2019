@@ -17,6 +17,7 @@ class Computer:
     def process_one(self):
         instruction = self.get_instruction()
         addr_values = self.evaluate_arg(instruction.args)
+        print("Running:", instruction.key_word)
         if instruction.key_word == "add":
             addr_a = addr_values[0]
             addr_b = addr_values[1]
@@ -42,6 +43,36 @@ class Computer:
             addr_a = addr_values[0]
             self.output.append(addr_a)
             self.position += 2
+        elif instruction.key_word == "jump_true":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            if addr_a != 0:
+                self.position = addr_b
+            else:
+                self.position += 3
+        elif instruction.key_word == "jump_false":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            if addr_a == 0:
+                self.position = addr_b
+            else:
+                self.position += 3
+        elif instruction.key_word == "less":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            if addr_a < addr_b:
+                self.instruction_set[instruction.output] = 1
+            else:
+                self.instruction_set[instruction.output] = 0
+            self.position += 4
+        elif instruction.key_word == "equal":
+            addr_a = addr_values[0]
+            addr_b = addr_values[1]
+            if addr_a == addr_b:
+                self.instruction_set[instruction.output] = 1
+            else:
+                self.instruction_set[instruction.output] = 0
+            self.position += 4
         elif instruction.key_word == "STOP":
             self.stopped = True
             if not self.output:
@@ -95,9 +126,38 @@ class Computer:
                 key_word = "output",
                 args = [Arg(mode_names[modes[0]], self.instruction_set[self.position+1])]
             )
+        elif code == 5:
+            key_word = "jump_true"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            return Instruction(key_word, args)
+        elif code == 6:
+            key_word = "jump_false"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            return Instruction(key_word, args)
+        elif code == 7:
+            key_word = "less"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            output = self.instruction_set[self.position+3]
+            return Instruction(key_word, args, output)
+        elif code == 8:
+            key_word = "equal"
+            args = [
+                Arg(mode_names[modes[0]], self.instruction_set[self.position+1]),
+                Arg(mode_names[modes[1]], self.instruction_set[self.position+2])
+            ]
+            output = self.instruction_set[self.position+3]
+            return Instruction(key_word, args, output)
         elif code == 99:
             return Instruction(key_word = "STOP")
-
         else:
             raise Exception(f"Instruction not implemented {code}") 
 
